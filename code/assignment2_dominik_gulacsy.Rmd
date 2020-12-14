@@ -8,13 +8,17 @@ output:
     highlight: github
 ---
 
+```{r, echo=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+```
 ```{r setup, include=FALSE}
 suppressWarnings(suppressMessages(library(knitr)))
+path <- "/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/"
 ```
 
 ## Intro
 
-I used [**BBC Food**](https://www.bbc.co.uk/food) as a target site for this webscraping project. I opted for this site because it's content for me was relevant. Actually I am interested in creating a recipe gatherer and an app that can easily show the steps of the cooking on a tablet, can make recommendations on dietary and scheduling preferences (e.g: gluten-free, batch cooking) and has the feature to show recipe suggestion when uploading a picture of ingredients by calculating ingredient similarity scores. With a built-in ingredient stock (resource) manager which predicts based on consumptional habits when certain ingredients will get low. Regarding technicalities the basic structure of site was easy to understand and made the scraping process relatively clear. Yet there was some JSONs that could be extracted to make the process much more manageable and long-life.
+I used [**BBC Food**](https://www.bbc.co.uk/food) as a target site for this webscraping project. I opted for this site because it's content for me was relevant. Actually I am interested in creating a recipe gatherer and an app that can easily show the steps of the cooking on a tablet, can make recommendations on dietary and scheduling preferences (e.g: gluten-free, batch cooking) and has the feature to show recipe suggestion when uploading a picture of ingredients by calculating ingredient similarity scores. With a built-in ingredient stock (resource) manager which predicts based on consumption habits when certain ingredients will get low. Regarding technicalities the basic structure of site was easy to understand and made the scraping process relatively clear. Yet there was some JSONs that could be extracted to make the process much more manageable and long-life.
 
 ## Step-by-step description of my webscraping script
 
@@ -39,25 +43,27 @@ library(data.table)
 
 1. Overview
 While investigating the site's structure I recognized that recipes are organized on the site in the following way:
-  
-  1. A-Z indexing
-  ```https://www.bbc.co.uk/food/recipes/a-z/a/1#featured-content```
-  ![alt text here]()
-  2. Pagination
-  ```https://www.bbc.co.uk/food/recipes/a-z/b/7#featured-content```
-  3. Recipe sites
-  ```https://www.bbc.co.uk/food/recipes/aclassicspongecakewi_9406```
+1. A-Z indexing
+"https://www.bbc.co.uk/food/recipes/a-z/a/1#featured-content"
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/pics/a-z.JPG)
+2. Pagination
+"https://www.bbc.co.uk/food/recipes/a-z/b/7#featured-content"
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/pics/pagination.JPG)
+3. Recipe sites
+"https://www.bbc.co.uk/food/recipes/aclassicspongecakewi_9406"
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/pics/recipe_sites.JPG)
+
 
 This structure represents the core logic behind my script. So firstly, I should get the initial letter pages, then the paginated pages an lastly all the recipe pages listed on the before mentioned pages. 
 
 2. Getting the JSONs
 Going through the Network tab in Google Chrome I found that all of these page types contain a JSON in their HTML doc. 
 
-![alt text here]()
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/pics/json.JPG)
 
 However, getting this JSON is not that easy it may look since there is no id or class associated with the script tag that contains the JSON. So in order to properly extract these JSONs I had to use a function that can look for the ```window.__reactInitialState__ =``` expression among the script tags and return the JSON of the one that includes it.
 
-```{r}
+```{r eval=FALSE}
 # Create function to extract JSON from the HTML Doc
 get_json_values <- function(my_page , my_look_for, ful_name) {
   #my_look_for <- 'reactInitialState'
@@ -82,15 +88,20 @@ get_json_values <- function(my_page , my_look_for, ful_name) {
 
 We can get the necessary data this way on every level. Actually, I needed to get the one JSON to know what are the initial letter indexes and get the JSON for every page and every recipe.
 
-To further develop my script I retrieve the JSON from ```https://www.bbc.co.uk/food/recipes/a-z/a/1#featured-content``` which contains the data on initial letters and the URLs for the recipe pages in azPageReducer item. Then I also extracted the JSON from ```https://www.bbc.co.uk/food/recipes/aclassicspongecakewi_9406``` just to see what kind of data can be collected from the page. I decided to collect the recipe category, title, description, some diet labels, collection label, chef, preparation time, cook time, food name, number of ratings and rating score. Plus the ingredients, stages, instructions and occasion labels as lists too.
+To further develop my script I retrieve the JSON from "https://www.bbc.co.uk/food/recipes/a-z/a/1#featured-content" which contains the data on initial letters and the URLs for the recipe pages in azPageReducer item.
 
-![alt text here]()
-![alt text here]()
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/pics/json_letters.JPG)
+
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/pics/json_urls.JPG)
+
+Then I also extracted the JSON from "https://www.bbc.co.uk/food/recipes/aclassicspongecakewi_9406" just to see what kind of data can be collected from the page. I decided to collect the recipe category, title, description, some diet labels, collection label, chef, preparation time, cook time, food name, number of ratings and rating score. Plus the ingredients, stages, instructions and occasion labels as lists too.
+
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/pics/json_recipes.JPG)
 
 3. Getting the ingredients from the JSON
 Getting the ingredients from the JSON was not easy as they were embedded in the stage items. So I needed to consolidate all ingredients from all stages of the recipe to have the whole list of ingredients.
 
-```{r}
+```{r eval=FALSE}
 # Create function to get ingredients from nested lists
 get_ingredients <- function() {
   stages<-recipe_json$recipeReducer$recipe$stagesWithoutLinks
@@ -109,7 +120,7 @@ get_ingredients <- function() {
 4. Handling missing values
 Later on during the collection of recipes I realized that I needed a mechanism to check if a list was empty and return with NA if so. Thus I wrote the following function and created an other to check if items are being NULL:
 
-```{r}
+```{r eval=FALSE}
 # Create function that returns NA when list is empty and with element if not
 get_if_not_empty <- function(list,row,col) {
   if (is_empty(list)){
@@ -132,7 +143,7 @@ get_if_not_null <- function(item) {
 5. Initializing the automatized scraper
 To get ready to scrape all recipe pages, I got the initial letter indexes from the above mentioned JSON and saved it into a variable. I created a data frame for the variables intended to be scraped and empty lists for the ingredients, stages, instructions and occasion labels.
 
-```{r}
+```{r eval=FALSE}
 # Find BBC Food page to get letter page letters
 t <- read_html('https://www.bbc.co.uk/food/recipes/a-z/a/1#featured-content')
 write_html(t, paste0(path, "bbc_food_page.html"))
@@ -227,7 +238,7 @@ df$occasions <- occasions
 7. Adding derived variables
 To gain more insight using this data, I also added the following calculated columns: number of stages, number of ingredients, number of instructions, number of occasions. 
 
-```{r}
+```{r eval=FALSE}
 df$no_stages <- unlist(lapply(df$stages,length))
 df$no_ingredients <- unlist(lapply(df$ingredients,length))
 df$no_instructions <- unlist(lapply(df$instructions,length))
@@ -239,7 +250,9 @@ df$no_occasions <- unlist(lapply(df$occasions,length))
 1. Rating distribution
 Firstly, I looked at how the rating of recipes is distributed. It looks like there are very few number of recipes that have more than 50 ratings. So in many cases the true quality of the recipe cannot be evaluated. However, it can be seen that when users indeed rate the recipe they usually rate it good. Most recipes have an above 4 rating.
 
-```{r echo=FALSE}
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/plots/p1.png)
+
+```{r include=FALSE, eval=FALSE}
 df[,c("rating_no","rating_val")] %>%
   filter(rating_no!=0) %>% 
   filter(rating_no<200) %>% 
@@ -251,13 +264,15 @@ df[,c("rating_no","rating_val")] %>%
   theme_economist() + 
   scale_fill_economist()
 
-kable(summary(df[,c("rating_no","rating_val")]))
+summary(df[,c("rating_no","rating_val")])
 ```
 
 2. Recipe Category distribution
 Next I took a look at which recipe categories are the most common. Based on the chart it can be said that most recipes belong to main course category. This is no surprise since it can be considered the broadest category of them all. The following two categories are "cakes and baking" and desserts which combined are still far away from the main course category.
 
-```{r}
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/plots/p2.png)
+
+```{r include=FALSE, eval=FALSE}
 cat_df <- df[,c("category","rating_val","no_stages","no_ingredients","no_instructions")] %>% 
   group_by(category) %>% 
   summarize(
@@ -279,7 +294,9 @@ ggplot(cat_df, aes(x = reorder(category, no_recipes), y = no_recipes, fill= no_r
 
 3. Most common ingredients
 One of the most interesting about this data that I managed to gather all the ingredients needed in every recipe. With this data I could find out which ingredients are the most common in recipes. It turns out that top 5 are black pepper, olive oil, butter, garlic and salt. Salt and pepper are once again not big of a surprise but it looks like that most recipes include some kind of saturated fat which is quite interesting from a dietetical point of view. 
-```{r}
+
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/plots/p3.png)
+```{r include=FALSE, eval=FALSE}
 top10 <- data.frame(sort(ing_df, decreasing=T)[1:10],)
 colnames(top10) <- c("ingredient", "frequency")
 
@@ -293,8 +310,10 @@ ggplot(top10, aes(x = reorder(ingredient, frequency), y = frequency, fill= frequ
 ```
 
 4. Chef performance
-Finally, I also investigated whether there is a connection between how chefs' recipes are rated and how complex their average recipe is. It turned out that there is no such relationship between these based on the data. Running a linear regression on the data, the global F test's p value was very large. 
-```{r}
+Finally, I also investigated whether there is a connection between how chefs' recipes are rated and how complex their average recipe is. It turned out that there is no such relationship between these based on the data. Running a linear regression on the data, the global F test's p value was very large.
+
+![''](/Users/Dominik/OneDrive - Central European University/1st_trimester/C2-Webscraping/assignment2/plots/p4.png)
+```{r include=FALSE, eval=FALSE}
 chef_df <- df[,c("chef","rating_val","no_ingredients")] %>% 
   group_by(chef) %>% 
   summarize(
