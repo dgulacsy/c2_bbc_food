@@ -1,0 +1,89 @@
+# Visualization
+library(ggplot2)
+# Data management
+library(dplyr)
+library(tidyverse)
+library(data.table)
+library(readr)
+library(svglite)
+
+path <- "/Users/Dominik/OneDrive - Central European University/1st_trimester/DE3/Homeworks/DE3_HW3/presidential_debate_analysis/"
+
+# Data wrangling -------------------------------------------------------------
+# Import data
+df <- read_csv(paste0(path,"data/debates.csv"))
+df <- separate(df,c("candidate1","candidate2","year","debate"), col=file)
+
+# Calculate tempo of debate words/min
+df$tempo <- df$word_count / df$length_min
+
+df <- df[, c("candidate1","candidate2","year","debate","length_min","word_count","tempo","sentiment","negative","positive","neutral","mixed")]
+
+agg_df<-df %>%
+  group_by(year) %>%
+  summarize(avg_length_min = mean(length_min, na.rm = TRUE),
+            avg_word_count = mean(word_count, na.rm = TRUE),
+            avg_tempo = mean(tempo, na.rm = TRUE),
+            avg_negative = mean(negative, na.rm = TRUE),
+            avg_positive = mean(positive, na.rm = TRUE),
+            avg_neutral = mean(neutral, na.rm = TRUE),
+            avg_mixed = mean(mixed, na.rm = TRUE))
+
+agg_df$year <- as.factor(agg_df$year)
+
+str(agg_df)
+# Plotting graphs ---------------------------------------------------------
+# Average number of words by election years
+p1<-ggplot(agg_df, aes(x = year, y = avg_word_count))+
+  geom_col(aes(fill = year), width = 0.7) + 
+  coord_cartesian(ylim = c(15000, 17500))+
+  labs(x="Election years", 
+       y="Number of words", 
+       title="Average number of words by election years", 
+       caption = "Note: Y axis starts at 15K words; Only 2 debates took place in 2020 due to COVID-19.")
+
+#ggsave(file="visuals/p1.png", plot=p1, width=10, height=8)
+
+# Change of tempo from debate to debate
+p2<-ggplot(df, aes(x=paste(year,debate), y=tempo, group=1)) +
+  geom_line(linetype="dashed", color="grey50")+
+  geom_point(color="skyblue4", size=4) +
+  labs(x="Year & Debate", 
+       y="Tempo (words/min)", 
+       title="Speak tempo by debates", 
+       caption = "Note: The speak tempo data also includes the moderators' sections.")
+
+# ggsave(file="visuals/p2.png", plot=p2, width=10, height=8)
+
+plot_df <- rbind(agg_df %>% mutate(sentiment="Positive"),agg_df%>% mutate(sentiment="Negative"),agg_df %>% mutate(sentiment="Neutral"))
+plot_df$sentiment_score <- apply(plot_df,1,function(x){
+  if(x['sentiment']=="Positive"){
+    return(as.numeric(x['avg_positive']))
+  }
+  if(x['sentiment']=="Negative"){
+    return(as.numeric(x['avg_negative']))
+  }
+  if(x['sentiment']=="Neutral"){
+    return(as.numeric(x['avg_neutral']))
+  }
+})
+
+# Sentiment Scores by election years
+p3<-ggplot(plot_df, aes(x =  year, y= sentiment_score)) +
+  geom_bar(aes(fill = sentiment), stat="identity", width=0.7, position = "dodge") +
+  labs(x="Election years", 
+       y="Sentiment Score", 
+       title="Sentiment scores by election years", 
+       caption = "Note: The sentiment scores data also includes the moderators' sections.")
+
+ggsave(file="visuals/p3.png", plot=p3, width=10, height=8)
+
+# Negative sentiment scores by debates
+p4<-ggplot(df, aes(x = year, y= negative)) +
+  geom_bar(aes(fill = debate), stat="identity", width=0.7, position = "dodge") +
+  labs(x="Election years", 
+       y="Negative Sentiment Score", 
+       title="Negative sentiment scores by debates", 
+       caption = "Note: The sentiment scores data also includes the moderators' sections.")
+
+ggsave(file="visuals/p4.png", plot=p4, width=10, height=8)

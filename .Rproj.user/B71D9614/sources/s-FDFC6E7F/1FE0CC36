@@ -1,0 +1,32 @@
+{
+    "id": "1FE0CC36",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1607972986469.0,
+    "source_on_save": false,
+    "relative_order": 5,
+    "properties": {
+        "expression": "agg_df",
+        "caption": "agg_df",
+        "totalObservations": "10",
+        "displayedObservations": "10",
+        "variables": "5",
+        "cacheKey": "6B051156",
+        "object": "agg_df",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=agg_df&cache_key=6B051156&max_cols=50",
+        "preview": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 31244216342151220,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1607972986469,
+    "read_only": false,
+    "read_only_alternatives": []
+}

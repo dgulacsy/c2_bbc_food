@@ -1,0 +1,120 @@
+#install.packages("WDI")
+library(WDI)
+library(ggthemes)
+library(dplyr)
+library(ggplot2)
+require(scales)
+library(tidyverse)
+library(texreg)
+library(car)
+
+path <- "/Users/Dominik/OneDrive - Central European University/1st_trimester/Finance_DA/examples/gdp-co2/"
+non_countries <- read_csv(paste0(path,"non-countries.csv"))
+
+df<-WDI(
+  country = "all",
+  indicator = c("EN.ATM.CO2E.PC","NY.GDP.PCAP.KD","SP.POP.TOTL"),
+  start = 2000,
+  end = 2000,
+  extra = FALSE,
+  cache = NULL
+)
+
+colnames(df)[4] <- "CO2"
+colnames(df)[5] <- "GDP"
+colnames(df)[6] <- "Population"
+
+df <- df[! df$iso2c %in% as.vector(non_countries$`non-countries`),c(-3)]
+
+write_csv(df,paste0(path,"gdp-co2-data.csv"))
+
+df<-df[!is.na(df$CO2) & !is.na(df$GDP)& !is.na(df$Population),]
+
+df$GDPPC <- df$GDP/df$Population
+
+#EDA
+
+summary(df)
+
+ggplot(df, aes(x = "", y = GDP)) + 
+  geom_boxplot()
+
+ggplot(df, aes(x = "", y = CO2)) + 
+  geom_boxplot()
+
+ggplot(df, aes(x=GDP, y=CO2)) +
+  geom_point(size=2, shape=22)
+
+df %>%
+  keep(is.numeric) %>% 
+  gather() %>% 
+  ggplot(aes(value)) +
+  facet_wrap(~key, scales = "free") +
+  geom_histogram()+
+  theme_wsj() + 
+  scale_fill_wsj()
+
+df <- df %>% mutate( ln_gdp = log( GDP ),
+                     ln_CO2 = log( CO2 ))
+
+# Models
+
+# 1) level-level model
+ggplot( df , aes(x = GDP , y = CO2)) +
+  geom_point() +
+  geom_smooth(method="loess")+
+  labs(x = "GDP",y = "CO2 Emission")
+
+reg1 <- lm(CO2 ~ GDP, data = df)
+summary(reg1)
+plot(reg1,which=1:2)
+ncvTest(reg1)
+confint(reg1)
+
+ggplot( data = df, aes( x = GDP, y = CO2 ) ) + 
+  geom_point( color='blue') +
+  geom_smooth( method = lm , color = 'red' )
+
+# 2) level-log model
+
+ggplot( df , aes(x = GDP, y = CO2))  +
+  geom_point() +
+  geom_smooth(method="loess")+
+  labs(x = "GDP, ln scale",y = "CO2 Emission")  +
+  scale_x_continuous( trans = log_trans())
+
+reg2 <- lm(CO2 ~ ln_gdp, data = df)
+summary(reg2)
+plot(reg2,which=1:2)
+ncvTest(reg2)
+confint(reg2)
+
+ggplot( data = df, aes( x = ln_gdp, y = CO2 ) ) + 
+  geom_point( color='blue') +
+  geom_smooth( method = lm , color = 'red' )
+
+# 3) log-log model
+
+ggplot( df , aes(x = GDP, y = CO2))  +
+  geom_point() +
+  geom_smooth(method="loess")+
+  labs(x = "GDP, ln scale",y = "CO2 Emission, ln scale")  +
+  scale_x_continuous( trans = log_trans())+
+  scale_y_continuous( trans = log_trans())
+
+reg3 <- lm(ln_CO2 ~ ln_gdp , data = df)
+summary(reg3)
+plot(reg3,which=1:2)
+ncvTest(reg3)
+confint(reg3)
+
+ggplot( data = df, aes( x = ln_gdp, y = ln_CO2 ) ) + 
+  geom_point( color='blue') +
+  geom_smooth( method = lm , color = 'red' )
+
+# Compare Models
+htmlreg( list(reg1 , reg2 , reg3 ),
+         type = 'html',
+         custom.model.names = c("level-level","level-log","log-log"),
+         caption = "Modelling CO2 emission and GDP of countries",
+         file = paste0( path ,'model_comparison.html'), include.ci = FALSE)
